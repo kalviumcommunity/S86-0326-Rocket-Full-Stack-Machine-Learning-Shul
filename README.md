@@ -1051,3 +1051,251 @@ Official scikit-learn documentation on cross-validation strategies
 Kaggle tutorial on identifying and preventing data leakage
 
 TimeSeriesSplit documentation and examples
+
+## Data Leakage: The Silent Killer of Machine Learning Models
+
+Data leakage is one of the most dangerous and misunderstood problems in machine learning. It does not usually announce itself with errors or warnings. Instead, it quietly produces excellent validation scores, impressive cross-validation results, and apparent model success — only to fail dramatically when deployed in the real world.
+
+Many ML projects do not fail because of poor algorithms or insufficient data. They fail because information that should not have been available during training was accidentally included. The model learned patterns it will never see again in production. What looked like intelligence was actually contamination.
+
+This lesson builds an intuitive and practical understanding of data leakage using simple, concrete examples. By the end, you should be able to identify leakage patterns immediately and prevent them before they corrupt your evaluation.
+
+### What Is Data Leakage?
+Data leakage occurs when a model uses information during training that would not be available at prediction time in the real world.
+
+In other words, the model "cheats" by learning from future data, target-derived signals, or improperly shared information between training and test sets.
+
+The key principle is simple:
+
+A model must only learn from information that would exist at the moment a real-world prediction is made.
+
+If the model sees anything beyond that boundary, evaluation results become invalid.
+
+### Why Data Leakage Is Dangerous
+Leakage is dangerous because:
+
+It produces artificially high performance metrics.
+It hides generalization failure.
+It misleads stakeholders.
+It wastes engineering effort.
+It damages trust when deployed systems fail.
+The most dangerous part is that leakage often looks like success. A model achieving 98% accuracy may not be brilliant — it may simply be cheating.
+
+Leakage does not make your model worse in training. It makes your evaluation dishonest.
+
+### Example 1: Target Leakage (The Most Common Type)
+Imagine you are building a model to predict whether a customer will churn.
+
+Your dataset includes:
+
+Tenure
+MonthlyCharges
+ContractType
+SupportCallsLast90Days
+Churn
+CancellationReason
+You define:
+
+Target: Churn
+Features: Everything except Churn
+At first glance, this seems correct. But you included CancellationReason as a feature.
+
+Why is this leakage?
+
+Because CancellationReason only exists after a customer has already churned. At the moment you need to predict churn (before it happens), you do not know the cancellation reason. That information exists only in hindsight.
+
+The model will learn that if CancellationReason is not null, churn = Yes. It will achieve near-perfect performance. But in production, CancellationReason will always be missing for active customers — the feature will be useless.
+
+This is target leakage. A feature is derived from or dependent on the target outcome.
+
+Rule: If a feature would not exist before the outcome happens, it is leakage.
+
+### Example 2: Using Future Information (Temporal Leakage)
+Suppose you are predicting whether a patient will be readmitted within 30 days of hospital discharge.
+
+Your dataset contains:
+
+Age
+Diagnosis
+LengthOfStay
+FollowUpAppointmentBooked
+Readmitted
+You include FollowUpAppointmentBooked as a feature.
+
+Why might this be leakage?
+
+If follow-up appointments are scheduled only after the hospital estimates readmission risk, then the feature is influenced by the outcome prediction process itself. It may encode future decisions or downstream effects.
+
+Even worse, if the appointment is scheduled after discharge, and you are trying to predict readmission at discharge time, then this feature did not exist when the prediction needed to be made.
+
+The model is seeing future information.
+
+Rule: If a feature reflects something that happens after the prediction decision point, it is leakage.
+
+### Example 3: Train-Test Contamination
+Consider the following incorrect workflow:
+
+Load full dataset.
+Scale all numerical columns using StandardScaler.
+Split into train and test sets.
+The problem is subtle. When you scale before splitting, the scaler calculates the mean and standard deviation using the entire dataset — including the test set.
+
+That means information from the test set influenced the training transformation. The training data was normalized using statistics that included unseen examples.
+
+Even though you didn't directly train on the test labels, you leaked test distribution information into the training process.
+
+Correct workflow:
+
+Load data.
+Split into train and test.
+Fit scaler on training data only.
+Transform test data using fitted scaler.
+Rule: Any operation that "fits" must only see training data.
+
+### Example 4: Feature Derived from Target
+Suppose you are predicting loan default.
+
+Your dataset includes:
+
+CreditScore
+Income
+LoanAmount
+DaysUntilDefault
+Defaulted
+You include DaysUntilDefault as a feature.
+
+Why is this leakage?
+
+DaysUntilDefault is defined only for customers who defaulted. It encodes when the default happened. That is direct target information.
+
+The model will learn that if DaysUntilDefault exists, Defaulted = Yes. It is a perfect predictor because it encodes the answer.
+
+Rule: If a feature would disappear when the target is unknown, it is leakage.
+
+### Example 5: Aggregated Leakage
+This type is more subtle.
+
+Imagine you create a feature:
+
+RegionalChurnRate = average churn rate for that region.
+
+But you compute this using the entire dataset before splitting.
+
+Now each row's feature includes information derived from other rows — including rows in the test set.
+
+The model indirectly learns about test labels through aggregated statistics.
+
+Correct approach:
+
+Compute aggregated statistics using training data only, then apply them to the test set.
+
+Rule: Aggregations must be computed on training data only.
+
+### Why Leakage Often Goes Undetected
+Leakage is rarely obvious because:
+
+Code runs without errors.
+Metrics look excellent.
+Cross-validation may still look good.
+The mistake is conceptual, not syntactic.
+Leakage is a boundary violation. It happens when we forget to ask:
+
+At the moment of prediction, would I actually know this?
+
+If you cannot confidently answer yes, investigate further.
+
+### How to Detect Data Leakage
+There are warning signs:
+
+Suspiciously high accuracy (e.g., 99% in a complex real-world problem).
+Perfect or near-perfect correlation between a feature and the target.
+Model performance collapses in production.
+A feature seems "too good to be true."
+The model performs unrealistically well with very little feature engineering.
+When something looks magical, question it.
+
+### The Prediction Moment Test
+The most reliable leakage prevention technique is mental simulation.
+
+Close your eyes and imagine:
+
+It is the exact moment in real life when the prediction must be made.
+
+Now ask:
+
+What data exists in the system at that exact moment?
+What data does not exist yet?
+What data only exists because the outcome already happened?
+If a feature does not exist at prediction time, exclude it.
+
+This thought experiment prevents most leakage before it happens.
+
+### Types of Data Leakage Summary
+There are three main categories:
+
+Target Leakage Using features derived from or dependent on the target variable.
+
+Temporal Leakage Using future information that would not be available at prediction time.
+
+Train-Test Contamination Allowing test set information to influence training through preprocessing or aggregation.
+
+Each violates the same core rule: the model must only learn from information available at prediction time.
+
+### Simple Visual Mental Model
+Think of your dataset as divided by a wall:
+
+Past Information | Prediction Moment | Future Information
+
+The model is allowed to see everything on the left. It must not see anything on the right.
+
+Data leakage occurs when information from the right side leaks across the wall.
+
+Your job as an ML engineer is to guard that wall.
+
+### Preventing Data Leakage in Practice
+Separate X and y early.
+Split into train and test before fitting anything.
+Fit preprocessing only on training data.
+Avoid features derived from the target.
+Avoid future information.
+Review every feature with the prediction moment test.
+Document feature availability assumptions.
+Perform sanity checks on correlations.
+Leakage prevention is discipline, not luck.
+
+### Real-World Reflection
+In industry, leakage is responsible for many failed ML deployments. Models that looked extraordinary in notebooks performed poorly in production because:
+
+They learned from post-outcome information.
+They used target-derived features.
+They were validated incorrectly.
+Leakage wastes months of effort.
+
+Preventing leakage takes minutes of disciplined thinking.
+
+### Closing Reflection
+Data leakage is not a coding error. It is a thinking error.
+
+It happens when we fail to clearly define:
+
+What we are predicting.
+When the prediction happens.
+What information exists at that moment.
+Every feature must pass the prediction moment test.
+
+Every preprocessing step must respect the train-test boundary.
+
+Every evaluation must be honest.
+
+If you remember only one thing from this lesson, remember this:
+
+If the model sees information it would not have in real life, your evaluation is invalid.
+
+Guard the boundary. Protect the test set. Build honest models.
+
+### Bonus Content 🎁
+This section is optional, and learners who want to explore the topics covered so far can utilize the materials provided below.
+
+Kaggle Tutorial on Data Leakage
+
+Google Machine Learning Crash Course – Data Preparation
