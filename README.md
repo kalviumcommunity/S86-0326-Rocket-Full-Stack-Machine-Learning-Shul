@@ -22,6 +22,7 @@ The system is designed to support both exploratory analysis and predictive model
 - `notebooks/01_supervised_learning_problem_types.md` - Conceptual guide to identifying supervised learning problem types (classification vs regression, subtypes, metrics, algorithm families, and common pitfalls).
 - `notebooks/02_defining_feature_columns_target_variables.ipynb` - Practical notebook on defining target and feature columns, validating feature eligibility, and preventing leakage through correct train/test preprocessing order.
 - `notebooks/03_inspecting_feature_distributions_before_modeling.ipynb` - Practical notebook for numerical/categorical distribution inspection, outlier and skew diagnostics, target-wise comparisons, and transformation decisions before modeling.
+- `notebooks/04_training_linear_regression.md` - Practical lesson on training and evaluating a Linear Regression model, comparing it against a baseline, and interpreting coefficients safely.
 
 ## Project Structure
 
